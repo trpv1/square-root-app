@@ -15,13 +15,12 @@ client = gspread.authorize(creds)
 sheet = client.open("ScoreBoard").sheet1  # スプレッドシート名を合わせる
 
 # === 効果音 URL ===
-NAME_URL   = "https://github.com/trpv1/square-root-app/raw/main/static/name.mp3"
-START_URL  = "https://github.com/trpv1/square-root-app/raw/main/static/start.mp3"
+NAME_URL    = "https://github.com/trpv1/square-root-app/raw/main/static/name.mp3"
+START_URL   = "https://github.com/trpv1/square-root-app/raw/main/static/start.mp3"
 CORRECT_URL = "https://github.com/trpv1/square-root-app/raw/main/static/correct.mp3"
 WRONG_URL   = "https://github.com/trpv1/square-root-app/raw/main/static/wrong.mp3"
 
 # === 効果音再生ヘルパ ===
-
 def play_sound(url: str):
     st.markdown(
         f"<audio autoplay='true' style='display:none'><source src='{url}' type='audio/mpeg'></audio>",
@@ -29,7 +28,6 @@ def play_sound(url: str):
     )
 
 # === セッション初期化 ===
-
 def init_state():
     defaults = dict(
         nickname="",
@@ -42,54 +40,51 @@ def init_state():
         is_correct=None,
         user_choice="",
         saved=False,
-        played_name=False,  # NAME_URL 再生済み
+        played_name=False,
     )
     for k, v in defaults.items():
         st.session_state.setdefault(k, v)
-
 init_state()
 
 # === 問題生成 ===
-
 def make_problem():
     while True:
         a = random.randint(2, 200)
         for i in range(int(math.sqrt(a)), 0, -1):
             if a % (i * i) == 0:
                 outer, inner = i, a // (i * i)
-                correct = (
-                    str(outer)
-                    if inner == 1
-                    else (f"√{inner}" if outer == 1 else f"{outer}√{inner}")
-                )
+                if inner == 1:
+                    correct = str(outer)
+                elif outer == 1:
+                    correct = f"√{inner}"
+                else:
+                    correct = f"{outer}√{inner}"
                 choices = {correct}
                 while len(choices) < 4:
                     o = random.randint(1, 9)
                     inn = random.randint(1, 50)
-                    fake = str(o) if inn == 1 else (f"√{inn}" if o == 1 else f"{o}√{inn}")
+                    fake = (str(o) if inn == 1 else
+                           (f"√{inn}" if o == 1 else f"{o}√{inn}"))
                     choices.add(fake)
                 return a, correct, random.sample(list(choices), k=4)
 
-# === Sheets 保存/取得 ===
-
+# === 保存/取得関数 ===
 def save_score(name, score):
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     records = sheet.get_all_records()
-    # 既存同名行を削除
     for idx in reversed(range(len(records))):
         if records[idx]["name"] == name:
-            sheet.delete_rows(idx + 2)  # gspread v6
+            sheet.delete_rows(idx + 2)
     sheet.append_row([name, score, timestamp])
-
 def top3():
     rec = sheet.get_all_records()
     return sorted(rec, key=lambda x: x["score"], reverse=True)[:3]
 
 # === ニックネーム入力 ===
+if not st.session_state.played_name:
+    play_sound(NAME_URL)
+    st.session_state.played_name = True
 if st.session_state.nickname == "":
-    if not st.session_state.played_name:
-        play_sound(NAME_URL)
-        st.session_state.played_name = True
     st.title("平方根 1分クイズ")
     nick = st.text_input("ニックネームを入力してください", max_chars=12)
     if st.button("▶ 決定") and nick.strip():
@@ -99,7 +94,7 @@ if st.session_state.nickname == "":
 # === スタート画面 ===
 if not st.session_state.started:
     st.title(f"{st.session_state.nickname} さんの平方根クイズ")
-    st.write("**ルール**: 制限時間1分、正解+1点、不正解-1点、4択！")
+    st.write("**ルール**: 制限時間1分、正解+1点、不正解-1点、4択で挑戦！")
     if st.button("▶ スタート！"):
         play_sound(START_URL)
         st.session_state.started = True
@@ -124,8 +119,12 @@ if remaining == 0:
     for i, r in enumerate(top3(), 1):
         st.write(f"{i}. {r['name']} — {r['score']}点")
     if st.button("🔁 もう一度挑戦"):
-        for k in list(st.session_state.keys()):
-            del st.session_state[k]
+        # ニックネーム保持, ほかリセット
+        nickname = st.session_state.nickname
+        played_name = st.session_state.played_name
+        for k in list(st.session_state.keys()): del st.session_state[k]
+        st.session_state.nickname = nickname
+        st.session_state.played_name = played_name
     st.stop()
 
 # === 問題表示 ===
@@ -153,23 +152,19 @@ if st.session_state.answered:
     if st.session_state.is_correct:
         st.success("🎉 正解！ +1点")
     else:
-        st.markdown(f"""
-        <div style='padding:16px;border-radius:10px;background:#ffcccc;color:#990000;font-size:20px;animation:shake 0.5s;'>😡 不正解！ 正解は <b>{correct}</b> でした —1点</div>
-        <style>
-        @keyframes shake {{
-          0% {{ transform: translate(1px, 1px) rotate(0); }}
-          20% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
-          40% {{ transform: translate(-3px, 0) rotate(1deg); }}
-          60% {{ transform: translate(3px, 2px) rotate(0); }}
-          80% {{ transform: translate(1px, -1px) rotate(1deg); }}
-          100% {{ transform: translate(-1px, 2px) rotate(-1deg); }}
-        }}
-        </style>
-        """, unsafe_allow_html=True)
-
+        st.markdown(
+            f"""<div style='padding:16px;border-radius:10px;background:#ffcccc;color:#990000;font-size:20px;animation:shake 0.5s;'>😡 不正解！ 正解は <b>{correct}</b> —1点</div>""",
+            unsafe_allow_html=True,
+        )
     if st.button("次の問題へ"):
+        # 状態リセット
         st.session_state.current_problem = make_problem()
         st.session_state.answered = False
         st.session_state.is_correct = None
         st.session_state.user_choice = ""
+        # すぐに再描画
+        try:
+            st.rerun()
+        except AttributeError:
+            st.experimental_rerun()
     st.stop()
