@@ -49,7 +49,7 @@ init_state()
 # === 問題生成 ===
 def make_problem():
     while True:
-        a = random.randint(2, 200)
+        a = random.randint(2, 130)
         for i in range(int(math.sqrt(a)), 0, -1):
             if a % (i * i) == 0:
                 outer, inner = i, a // (i * i)
@@ -93,13 +93,8 @@ if not st.session_state.started:
     if st.button("スタート！"):
         play_sound(START_URL)
         st.session_state.started = True
-        st.session_state.start_time = time.time()
-        st.session_state.current_problem = make_problem()
-    st.stop()
-
-# === タイマー ===
-remaining = max(0, 60 - int(time.time() - st.session_state.start_time))
-mm, ss = divmod(remaining, 60)
+        st.session_state.star10 - int(time.time() - st.session_state.start_time))
+mm, ss = divmod(remaining, 10)
 st.markdown(f"## ⏱️ {st.session_state.nickname} さんのタイムアタック！")
 st.info(f"残り {mm}:{ss:02d} ｜ スコア {st.session_state.score} ｜ 挑戦 {st.session_state.total}")
 
