@@ -83,8 +83,7 @@ if st.session_state.nickname == "" or not st.session_state.started:
         components.html(
             """
             <script>
-              // アプリのstaticフォルダから音声ファイルを再生
-              new Audio('static/start.mp3').play();
+              new Audio("/static/start.wav").play();
             </script>
             """,
             height=0,
@@ -96,7 +95,6 @@ if st.session_state.nickname == "" or not st.session_state.started:
             else:
                 st.session_state.nickname = nick.strip()
         st.stop()
-
     # スタート前画面
     st.title(f"{st.session_state.nickname} さんの平方根クイズ")
     st.markdown("**ルール**: 制限時間1分、正解+1点、不正解-1点。4択で挑戦！")
