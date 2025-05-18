@@ -57,10 +57,6 @@ def generate_choices(correct):
 # === スコア保存／取得 ===
 def save_score(name, score):
     ts = time.strftime("%Y-%m-%d %H:%M:%S")
-    rec = sheet.get_all_records()
-    for idx in reversed(range(len(rec))):
-        if rec[idx]["name"] == name:
-            sheet.delete_rows(idx + 2)
     sheet.append_row([name, score, ts])
 def top3():
     rec = sheet.get_all_records()
