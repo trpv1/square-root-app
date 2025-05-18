@@ -16,6 +16,8 @@ NAME_URL   = "https://github.com/trpv1/square-root-app/raw/main/static/name.mp3"
 START_URL  = "https://github.com/trpv1/square-root-app/raw/main/static/start.mp3"
 CORRECT_URL = "https://github.com/trpv1/square-root-app/raw/main/static/correct.mp3"
 WRONG_URL   = "https://github.com/trpv1/square-root-app/raw/main/static/wrong.mp3"
+RESULT1_URL = "https://github.com/trpv1/square-root-app/raw/main/static/result_1.mp3"
+RESULT2_URL = "https://github.com/trpv1/square-root-app/raw/main/static/result_2.mp3"
 
 # === 効果音再生ヘルパ ===
 
@@ -109,15 +111,26 @@ st.info(f"残り {mm}:{ss:02d} ｜ スコア {st.session_state.score} ｜ 挑戦
 if remaining == 0:
     st.warning("⏰ タイムアップ！")
     st.write(f"最終スコア: {st.session_state.score}点 ({st.session_state.total}問)")
+
     if not st.session_state.saved:
         save_score(st.session_state.nickname, st.session_state.score)
         st.session_state.saved = True
-    st.write("### 🏆 ランキング（上位3名）")
+
+        # 上位3位を取得して、ユーザーがランクインしているかを判定
+        ranking = top3()
+        names = [r["name"] for r in ranking]
+        if st.session_state.nickname in names:
+            play_sound(RESULT1_URL)  # ランキング内
+        else:
+            play_sound(RESULT2_URL)  # ランキング外
+
+    st.write("### 🏆 歴代ランキング（上位3名）")
     for i, r in enumerate(top3(), 1):
         st.write(f"{i}. {r['name']} — {r['score']}点")
-    if st.button("もう一度挑戦"):
-        keys_to_clear = [k for k in st.session_state.keys() if k not in st.secrets]
-        for k in keys_to_clear:
+
+    if st.button("🔁 もう一度挑戦"):
+        # セッションをすべてクリアして、最初のニックネーム入力画面に戻る
+        for k in list(st.session_state.keys()):
             del st.session_state[k]
     st.stop()
 
