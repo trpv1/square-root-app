@@ -67,21 +67,21 @@ def generate_choices(correct):
 
 # === スコア保存・読み込み ===
 def save_score(nickname, score):
-    # 同名エントリを削除して上書き
-    records = sheet.get_all_records()
-    for i in reversed(range(len(records))):
-        if records[i].get("name") == nickname:
-            sheet.delete_row(i + 2)
+    # シートに行を追加するだけ
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     sheet.append_row([nickname, score, timestamp])
+
 def load_scores():
+    # 重複ニックネームは上書き（最後の値を採用）
     records = sheet.get_all_records()
-    sorted_records = sorted(records, key=lambda x: x["score"], reverse=True)
+    unique = {}
+    for rec in records:
+        unique[rec['name']] = rec
+    sorted_records = sorted(unique.values(), key=lambda x: x["score"], reverse=True)
     return sorted_records[:3]
 
 # === ニックネーム入力＆スタート前画面 ===
 if st.session_state.nickname == "" or not st.session_state.started:
-    # ニックネーム入力画面
     if st.session_state.nickname == "":
         st.title("平方根 1分クイズ")
         # 音声案内
@@ -101,7 +101,7 @@ if st.session_state.nickname == "" or not st.session_state.started:
             else:
                 st.session_state.nickname = nick.strip()
         st.stop()
-    # スタート前画面
+
     st.title(f"{st.session_state.nickname} さんの平方根クイズ")
     st.markdown("**ルール**: 制限時間1分、正解+1点、不正解-1点。4択で挑戦！")
     if st.button("▶ スタート！"):
@@ -119,8 +119,7 @@ m, s = divmod(remaining, 60)
 st.markdown(f"## ⏱️ {st.session_state.nickname} さんの1分タイムアタック！")
 st.markdown(
     f"<div style='background:#f0f2f6;padding:8px;border-radius:8px;'>"
-    f"残り時間：<b>{m}:{s:02d}</b> ｜ スコア：<b>{st.session_state.score}</b>点 "
-    f"｜ 挑戦：<b>{st.session_state.total}</b>問</div>",
+    f"残り時間：<b>{m}:{s:02d}</b> ｜ スコア：<b>{st.session_state.score}</b>点 ｜ 挑戦：<b>{st.session_state.total}</b>問</div>",
     unsafe_allow_html=True,
 )
 
@@ -165,9 +164,14 @@ if st.session_state.answered:
     st.markdown("---")
     if st.session_state.is_correct:
         st.success("正解！ +1点")
-        st.markdown(
-            '<audio autoplay src="https://www.soundjay.com/button/sounds/button-3.mp3"></audio>',
-            unsafe_allow_html=True,
+        # 正解音をJavaScriptで再生
+        components.html(
+            """
+            <script>
+            new Audio('https://www.soundjay.com/button/sounds/button-3.mp3').play();
+            </script>
+            """,
+            height=0,
         )
     else:
         st.markdown(
@@ -181,13 +185,16 @@ if st.session_state.answered:
 """,
             unsafe_allow_html=True,
         )
-        st.markdown(
-            '<audio autoplay src="https://www.soundjay.com/misc/sounds/fail-buzzer-01.mp3"></audio>',
-            unsafe_allow_html=True,
+        # 不正解音をJavaScriptで再生
+        components.html(
+            """
+            <script>
+            new Audio('https://www.soundjay.com/misc/sounds/fail-buzzer-01.mp3').play();
+            </script>
+            """,
+            height=0,
         )
     if st.button("次の問題へ"):
         st.session_state.current_problem = generate_problem()
         st.session_state.answered = False
         st.session_state.is_correct = None
-        st.session_state.user_choice = ""
-    st.stop()
