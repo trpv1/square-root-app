@@ -4,6 +4,16 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import streamlit.components.v1 as components
 
+components.html(
+    """
+    <script>
+      const audio = new Audio("https://your-app-name.streamlit.app/static/start.mp3");
+      audio.play().catch(e => console.log("音声再生がブロックされました:", e));
+    </script>
+    """,
+    height=0,
+)
+
 # === Google Sheets API 連携 ===
 scope = [
     "https://spreadsheets.google.com/feeds",
