@@ -27,8 +27,9 @@ def init_session_state():
         "answered": False,
         "is_correct": None,
         "user_choice": "",
-        "saved": False,  # スコア保存済フラグ
-        "spoken_nickname": False,  # 音声案内済フラグ
+        "saved": False,
+        "spoken_nickname_prompt": False,
+        "spoken_end": False,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -36,17 +37,15 @@ def init_session_state():
 
 init_session_state()
 
-# === 音声でニックネーム入力案内 ===
-if not st.session_state.spoken_nickname and st.session_state.nickname == "":
-    # JavaScriptによる音声案内
+# === 音声読み上げ関数 ===
+def speak(text, lang='ja-JP'):
     components.html(f"""
-<script>
-  var msg = new SpeechSynthesisUtterance("ニックネームを入力してください");
-  msg.lang = 'ja-JP'; msg.rate = 1.0; msg.pitch = 1.0;
-  window.speechSynthesis.speak(msg);
-</script>
-""", height=0)
-    st.session_state.spoken_nickname = True
+    <script>
+    var msg = new SpeechSynthesisUtterance(`{text}`);
+    msg.lang = '{lang}';
+    speechSynthesis.speak(msg);
+    </script>
+    """, height=0)
 
 # === 問題生成 ===
 def generate_problem():
@@ -79,25 +78,28 @@ def generate_choices(correct):
         s.add(fake)
     return list(s)
 
-# === スコア保存＆重複削除 ===
+# === スコア保存＆読み込み（重複削除） ===
 def save_score(nickname, score):
-    # 同じニックネームがあれば削除（上書き）
-    recs = sheet.get_all_records()
-    for i in reversed(range(len(recs))):
-        if recs[i]['name'] == nickname:
+    # 既存エントリを削除
+    records = sheet.get_all_records()
+    for i in reversed(range(len(records))):
+        if records[i]["name"] == nickname:
             sheet.delete_row(i+2)
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     sheet.append_row([nickname, score, timestamp])
-
 def load_scores():
     records = sheet.get_all_records()
-    sorted_records = sorted(records, key=lambda x: x['score'], reverse=True)
+    sorted_records = sorted(records, key=lambda x: x["score"], reverse=True)
     return sorted_records[:3]
 
 # === ニックネーム＆スタート画面 ===
 if st.session_state.nickname == "" or not st.session_state.started:
+    # ニックネーム未入力時
     if st.session_state.nickname == "":
         st.title("平方根 1分クイズ")
+        if not st.session_state.spoken_nickname_prompt:
+            speak("ニックネームを入力してください。")
+            st.session_state.spoken_nickname_prompt = True
         nick = st.text_input("ニックネームを入力", max_chars=12)
         if st.button("▶ 決定"):
             if nick.strip() == "":
@@ -106,8 +108,9 @@ if st.session_state.nickname == "" or not st.session_state.started:
                 st.session_state.nickname = nick.strip()
         st.stop()
 
+    # スタート前画面
     st.title(f"{st.session_state.nickname} さんの平方根 1分クイズ")
-    st.markdown("**ルール**：制限時間1分、正解で+1点、間違いで-1点、4択で挑戦！")
+    st.markdown("**ルール：**  制限時間1分、正解+1点、不正解-1点。4択で挑戦！")
     if st.button("▶ スタート！"):
         st.session_state.started = True
         st.session_state.start_time = time.time()
@@ -122,52 +125,37 @@ remaining = max(0, 60 - elapsed)
 m, s = divmod(remaining, 60)
 
 st.markdown(f"## ⏱️ {st.session_state.nickname} さんの1分タイムアタック！")
-st.markdown(
-    f"<div style='background:#f0f2f6;padding:8px;border-radius:8px;'>残り時間：<b>{m}:{s:02d}</b> ｜ スコア：<b>{st.session_state.score}</b> 点 ｜ 挑戦：<b>{st.session_state.total}</b> 問</div>",
-    unsafe_allow_html=True
-)
+st.markdown(f"<div style='background:#f0f2f6;padding:8px;border-radius:8px;'>残り時間：<b>{m}:{s:02d}</b> ｜ スコア：<b>{st.session_state.score}</b> 点 ｜ 挑戦：<b>{st.session_state.total}</b> 問</div>", unsafe_allow_html=True)
 
 # === 時間切れ処理 ===
 if remaining == 0:
     st.markdown("---")
-    st.markdown(f"## ⏰ タイムアップ！ {st.session_state.nickname} さんの最終スコア：{st.session_state.score}点（{st.session_state.total}問）")
+    st.markdown(f"## ⏰ タイムアップ！")
+    st.markdown(f"**{st.session_state.nickname} さんの最終スコア：{st.session_state.score}点（{st.session_state.total}問）**")
+    # 保存一度きり
     if not st.session_state.saved:
         save_score(st.session_state.nickname, st.session_state.score)
         st.session_state.saved = True
-
-    # ランキング表示
+    # ランキング取得＆表示
     top3 = load_scores()
     st.markdown("### 🏆 歴代ランキング（上位3名）")
     for idx, entry in enumerate(top3, start=1):
         st.write(f"{idx}. {entry['name']} — {entry['score']}点")
-
-    # 音声で順位発表
-    rank = None
-    for idx, entry in enumerate(top3, start=1):
-        if entry['name'] == st.session_state.nickname:
-            rank = idx
-            break
-    if rank:
-        msg = f"{st.session_state.nickname} さんの順位は {rank} 位です。おめでとうございます！"
-        pitch = 1.2
-    else:
-        msg = f"{st.session_state.nickname} さんの順位はランキング外です。もっと勉強しなさい！"
-        pitch = 0.8
-    components.html(f"""
-<script>
-  var msg = new SpeechSynthesisUtterance("{msg}");
-  msg.lang = 'ja-JP'; msg.rate = 1.0; msg.pitch = {pitch};
-  window.speechSynthesis.speak(msg);
-</script>
-""", height=0)
-
+    # 終了時音声
+    if not st.session_state.spoken_end:
+        if any(e['name']==st.session_state.nickname for e in top3):
+            rank = next(i+1 for i,e in enumerate(top3) if e['name']==st.session_state.nickname)
+            speak(f"{st.session_state.nickname}さんの順位は{rank}位です。おめでとうございます！")
+        else:
+            speak(f"{st.session_state.nickname}さんの順位はランキング外です。もっと勉強しなさい！")
+        st.session_state.spoken_end = True
+    # 再挑戦ボタン
     if st.button("🔁 もう一度挑戦"):
-        for k in list(st.session_state.keys()):
-            del st.session_state[k]
+        for k in list(st.session_state.keys()): del st.session_state[k]
         st.stop()
     st.stop()
 
-# === 問題表示 ===
+# === 現在の問題 ===
 a, correct, choices = st.session_state.current_problem
 st.markdown(f"### √{a} を簡約すると？")
 
@@ -178,20 +166,15 @@ if not st.session_state.answered:
         st.session_state.answered = True
         st.session_state.user_choice = user_choice
         st.session_state.total += 1
+        # サウンド効果
         if user_choice == correct:
+            st.audio('https://www.myinstants.com/media/sounds/bell_simple.mp3', start_time=0)
             st.session_state.score += 1
             st.session_state.is_correct = True
-            # 正解音
-            components.html("""
-<audio autoplay src='https://www.soundjay.com/buttons/sounds/button-09.mp3'></audio>
-""", height=0)
         else:
+            st.audio('https://www.myinstants.com/media/sounds/buzzer.mp3', start_time=0)
             st.session_state.score -= 1
             st.session_state.is_correct = False
-            # 不正解音
-            components.html("""
-<audio autoplay src='https://www.soundjay.com/misc/sounds/fail-buzzer-01.mp3'></audio>
-""", height=0)
 
 # === 結果表示フェーズ ===
 if st.session_state.answered:
@@ -199,8 +182,17 @@ if st.session_state.answered:
     if st.session_state.is_correct:
         st.success("正解！ +1点")
     else:
-        st.error(f"不正解！ 正解は {correct} でした。−1点")
-
+        # 派手な怒り演出
+        st.markdown("""
+        <div style='padding:15px;border-radius:10px;background-color:#ff3333;color:#fff;animation: flash 0.5s infinite;'>
+        <h3>😡 不正解！</h3>
+        <p>正解は <strong>{}</strong> でした。あなたの答え：<strong>{}</strong></p>
+        <p><strong>−1点</strong></p>
+        </div>
+        <style>
+        @keyframes flash {{0%,100% {{opacity:1;}}50% {{opacity:0.5;}}}}
+        </style>
+        """.format(correct, st.session_state.user_choice), unsafe_allow_html=True)
     if st.button("次の問題へ"):
         st.session_state.current_problem = generate_problem()
         st.session_state.answered = False
