@@ -84,7 +84,7 @@ if st.session_state.nickname == "" or not st.session_state.started:
             """
             <script>
               // アプリのstaticフォルダから音声ファイルを再生
-              new Audio('static/start.wav').play();
+              new Audio('static/start.mp3').play();
             </script>
             """,
             height=0,
