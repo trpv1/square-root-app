@@ -110,8 +110,8 @@ if st.session_state.nickname == "" or not st.session_state.started:
 if st.session_state.start_time is None:
     st.session_state.start_time = time.time()
 elapsed = int(time.time() - st.session_state.start_time)
-remaining = max(0, 60 - elapsed)
-m, s = divmod(remaining, 60)
+remaining = max(0, 10 - elapsed)
+m, s = divmod(remaining, 10)
 st.markdown(f"## ⏱️ {st.session_state.nickname} さんの1分タイムアタック！")
 st.markdown(
     f"<div style='background:#f0f2f6;padding:8px;border-radius:8px;'>残り時間：<b>{m}:{s:02d}</b> ｜ スコア：<b>{st.session_state.score}</b>点 ｜ 挑戦：<b>{st.session_state.total}</b>問</div>",
