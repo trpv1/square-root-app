@@ -14,16 +14,6 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(
 client = gspread.authorize(creds)
 sheet = client.open("ScoreBoard").sheet1  # あなたのスプレッドシート名に変更！
 
-# === スコア保存＆上位3件取得 ===
-def save_score(nickname, score):
-    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-    sheet.append_row([nickname, score, timestamp])
-
-def load_scores():
-    records = sheet.get_all_records()
-    sorted_records = sorted(records, key=lambda x: x["score"], reverse=True)
-    return sorted_records[:3]
-
 # === セッション初期化 ===
 def init_session_state():
     defaults = {
@@ -36,6 +26,7 @@ def init_session_state():
         "answered": False,
         "is_correct": None,
         "user_choice": "",
+        "saved": False,  # スコア保存済フラグ
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -74,10 +65,20 @@ def generate_choices(correct):
         s.add(fake)
     return list(s)
 
+# === 保存・読み込み関数 ===
+def save_score(nickname, score):
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    sheet.append_row([nickname, score, timestamp])
+
+def load_scores():
+    records = sheet.get_all_records()
+    sorted_records = sorted(records, key=lambda x: x["score"], reverse=True)
+    return sorted_records[:3]
+
 # === ニックネーム＆スタート画面 ===
 if st.session_state.nickname == "" or not st.session_state.started:
     if st.session_state.nickname == "":
-        st.title("[sqrt] 平方根 1分クイズ")
+        st.title("平方根 1分クイズ")
         nick = st.text_input("ニックネームを入力", max_chars=12)
         if st.button("▶ 決定"):
             if nick.strip() == "":
@@ -86,7 +87,7 @@ if st.session_state.nickname == "" or not st.session_state.started:
                 st.session_state.nickname = nick.strip()
         st.stop()
 
-    st.title(f"[sqrt] {st.session_state.nickname} さんの平方根クイズ")
+    st.title(f"{st.session_state.nickname} さんの平方根 1分クイズ")
     st.markdown("""
     **ルール：**
     - 制限時間 **1分**
@@ -107,22 +108,27 @@ remaining = max(0, 60 - elapsed)
 m, s = divmod(remaining, 60)
 
 st.markdown(f"""
-## [timer] {st.session_state.nickname} さんの1分タイムアタック
+## &#x23F1; {st.session_state.nickname} さんの1分タイムアタック
 <div style='background:#f0f2f6;padding:8px;border-radius:8px;'>
-残り時間：<b>{m}:{s:02d}</b> ｜ スコア：<b>{st.session_state.score}</b> 点 ｜ 挑戦：<b>{st.session_state.total}</b> 問
+残り時間：<b>{m}:{s:02d}</b>　｜　スコア：<b>{st.session_state.score}</b> 点　｜　挑戦：<b>{st.session_state.total}</b> 問
 </div>
 """, unsafe_allow_html=True)
 
 # === 時間切れ処理 ===
 if remaining == 0:
     st.markdown("---")
-    st.header("[time up] タイムアップ！")
-    st.subheader(f"{st.session_state.nickname} さんの最終スコア：{st.session_state.score}点（{st.session_state.total}問）")
-    save_score(st.session_state.nickname, st.session_state.score)
+    st.header("タイムアップ！")
+    st.subheader(f"最終スコア：{st.session_state.score}点（{st.session_state.total}問）")
+    # スコア保存は一度だけ
+    if not st.session_state.saved:
+        save_score(st.session_state.nickname, st.session_state.score)
+        st.session_state.saved = True
+
     top3 = load_scores()
     st.markdown("### ランキング（上位3名）")
     for idx, entry in enumerate(top3, start=1):
         st.write(f"{idx}. {entry['name']} — {entry['score']}点")
+
     if st.button("もう一度挑戦"):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
