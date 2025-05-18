@@ -1,6 +1,6 @@
 import streamlit as st
 import random, math, time
-import gspread, base64
+import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 # === Google Sheets API 連携 ===
@@ -15,17 +15,21 @@ client = gspread.authorize(creds)
 sheet = client.open("ScoreBoard").sheet1  # スプレッドシート名を合わせる
 
 # === 効果音ヘルパ ===
-CORRECT_URL  = "https://github.com/trpv1/square-root-app/raw/main/static/start.mp3"  # ★ご自身のMP3 URLに変更
-WRONG_URL    = "https://github.com/trpv1/square-root-app/raw/main/static/start.mp3"
-PROMPT_URL   = "https://github.com/trpv1/square-root-app/raw/main/static/start.mp3"
+NAME_URL   = "https://github.com/trpv1/square-root-app/raw/main/static/name.mp3"
+START_URL  = "https://github.com/trpv1/square-root-app/raw/main/static/start.mp3"
+CORRECT_URL = "https://github.com/trpv1/square-root-app/raw/main/static/correct.mp3"
+WRONG_URL   = "https://github.com/trpv1/square-root-app/raw/main/static/wrong.mp3"
 
 def play_sound(url: str):
-    """autoplay 音声プレイヤを埋め込む"""
-    html = f"""
-    <audio autoplay="true" style="display:none">
-        <source src="{url}" type="audio/mpeg">
-    </audio>"""
-    st.markdown(html, unsafe_allow_html=True)
+    """autoplay 音声プレイヤーを埋め込む"""
+    st.markdown(
+        f"""
+        <audio autoplay="true" style="display:none">
+            <source src="{url}" type="audio/mpeg">
+        </audio>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # === セッション初期化 ===
 def init_state():
@@ -85,7 +89,7 @@ def top3():
 
 # === ニックネーム入力 ===
 if st.session_state.nickname == "":
-    play_sound(PROMPT_URL)
+    play_sound(NAME_URL)
     st.title("平方根 1分クイズ")
     nick = st.text_input("ニックネームを入力してください", max_chars=12)
     if st.button("▶ 決定"):
@@ -100,17 +104,18 @@ if not st.session_state.started:
     st.title(f"{st.session_state.nickname} さんの平方根クイズ")
     st.write("**ルール**: 制限時間1分、正解+1点、不正解-1点、4択で挑戦！")
     if st.button("▶ スタート！"):
+        play_sound(START_URL)  # スタート時効果音
         st.session_state.started = True
         st.session_state.start_time = time.time()
         st.session_state.current_problem = make_problem()
     st.stop()
 
-# === タイマー & スコア ヘッダー ===
+# === タイマー & スコア ===
 if st.session_state.start_time is None:
     st.session_state.start_time = time.time()
 remaining = max(0, 60 - int(time.time() - st.session_state.start_time))
 mm, ss = divmod(remaining, 60)
-st.markdown(f"## ⏱️ {st.session_state.nickname} さんの 1分タイムアタック！")
+st.markdown(f"## ⏱️ {st.session_state.nickname} さんの1分タイムアタック！")
 st.info(f"残り {mm}:{ss:02d} ｜ スコア {st.session_state.score} ｜ 挑戦 {st.session_state.total}")
 
 # === タイムアップ ===
@@ -132,7 +137,7 @@ if remaining == 0:
 a, correct, choices = st.session_state.current_problem
 st.subheader(f"√{a} を簡約すると？")
 
-# === 回答 ===
+# === 回答入力 ===
 if not st.session_state.answered:
     user_choice = st.radio("選択肢を選んでください", choices)
     if st.button("解答する"):
@@ -142,21 +147,19 @@ if not st.session_state.answered:
         if user_choice == correct:
             st.session_state.score += 1
             st.session_state.is_correct = True
-            play_sound(CORRECT_URL)
+            play_sound(CORRECT_URL)  # 正解音
         else:
             st.session_state.score -= 1
             st.session_state.is_correct = False
-            play_sound(WRONG_URL)
+            play_sound(WRONG_URL)    # 不正解音
 
 # === 結果表示 ===
 if st.session_state.answered:
     if st.session_state.is_correct:
         st.success("🎉 正解！ +1点")
     else:
-        st.markdown("""
-        <div style='padding:16px;border-radius:10px;background:#ffcccc;color:#990000;font-size:20px;animation:shake 0.5s;'>
-        😡 不正解！ 正解は <b>{}</b>でした —1点
-        </div>
+        st.markdown(f"""
+        <div style='padding:16px;border-radius:10px;background:#ffcccc;color:#990000;font-size:20px;animation:shake 0.5s;'>😡 不正解！ 正解は <b>{correct}</b> でした —1点</div>
         <style>
         @keyframes shake {{
           0% {{ transform: translate(1px, 1px) rotate(0); }}
@@ -167,10 +170,11 @@ if st.session_state.answered:
           100% {{ transform: translate(-1px, 2px) rotate(-1deg); }}
         }}
         </style>
-        """.format(correct), unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
     if st.button("次の問題へ"):
         st.session_state.current_problem = make_problem()
         st.session_state.answered = False
         st.session_state.is_correct = None
         st.session_state.user_choice = ""
+    st.stop()
