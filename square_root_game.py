@@ -147,24 +147,30 @@ if not st.session_state.answered:
             st.session_state.is_correct = False
             play_sound(WRONG_URL)
 
-# === 結果表示 ===
+# === 結果表示用プレースホルダを先に作成 ===
+result_ph = st.empty()
+
+# === 結果表示フェーズ ===
 if st.session_state.answered:
-    if st.session_state.is_correct:
-        st.success("🎉 正解！ +1点")
-    else:
-        st.markdown(
-            f"""<div style='padding:16px;border-radius:10px;background:#ffcccc;color:#990000;font-size:20px;animation:shake 0.5s;'>😡 不正解！ 正解は <b>{correct}</b> —1点</div>""",
-            unsafe_allow_html=True,
-        )
-    if st.button("次の問題へ"):
-        # 状態リセット
-        st.session_state.current_problem = make_problem()
-        st.session_state.answered = False
-        st.session_state.is_correct = None
-        st.session_state.user_choice = ""
-        # すぐに再描画
-        try:
-            st.rerun()
-        except AttributeError:
-            st.experimental_rerun()
+    with result_ph.container():
+        if st.session_state.is_correct:
+            st.success("🎉 正解！ +1点")
+        else:
+            st.error(f"😡 不正解！ 正解は {correct} でした。−1点")
+
+        # === 次の問題へ ===
+        if st.button("次の問題へ"):
+            # 1⃣ 直ちに結果を非表示に
+            result_ph.empty()          # ← ここがポイント
+            # 2⃣ 状態をリセット
+            st.session_state.current_problem = make_problem()
+            st.session_state.answered = False
+            st.session_state.is_correct = None
+            st.session_state.user_choice = ""
+            # 3⃣ 即 rerun
+            try:
+                st.rerun()             # Streamlit 1.30+
+            except AttributeError:
+                st.experimental_rerun()
     st.stop()
+
