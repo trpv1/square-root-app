@@ -3,16 +3,23 @@ import random, math, time
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# === Google Sheets API 連携 ===
-scope = [
-    "https://spreadsheets.google.com/feeds",
-    "https://www.googleapis.com/auth/drive",
-]
+# Google Sheets 認証
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_dict(
     st.secrets["gcp_service_account"], scope
 )
 client = gspread.authorize(creds)
-sheet = client.open("ScoreBoard").sheet1  # あなたのスプレッドシート名に変更！
+
+# 🔽 接続テスト
+st.write("接続テスト中...")
+try:
+    sheet = client.open("ScoreBoard").sheet1
+    st.success("✅ Google Sheets に接続できました！")
+except Exception as e:
+    st.error(f"❌ 接続失敗: {e}")
+
+# ここから先に通常のアプリのコードを続けてください...
+
 
 # === スコア保存＆上位3件取得 ===
 def save_score(nickname, score):
