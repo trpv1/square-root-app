@@ -75,28 +75,27 @@ def load_scores():
     return sorted_records[:3]
 
 # === ニックネーム入力＆スタート前画面 ===
-if st.session_state.nickname == "":
-    st.title("平方根 1分クイズ")
-    nick = st.text_input("ニックネームを入力", max_chars=12)
-    if st.button("▶ 決定"):
-        if nick.strip() == "":
-            st.error("名前を入力してください。")
-        else:
-            st.session_state.nickname = nick.strip()
-            # 音声再生スクリプト（確実に再生）
-            components.html(
-                """
-                <script>
-                const audio = new Audio("https://square-root-app-mbhwqdylrupp9rdkamkvvd.streamlit.app/static/start.mp3");
-                audio.play().catch(err => {
-                    console.log("音声再生ブロック:", err);
-                });
-                </script>
-                """,
-                height=0,
-            )
-    st.stop()
-
+if st.session_state.nickname == "" or not st.session_state.started:
+    # ニックネーム入力画面
+    if st.session_state.nickname == "":
+        st.title("平方根 1分クイズ")
+        # start.wav 再生
+        components.html(
+            """
+            <script>
+              // アプリのstaticフォルダから音声ファイルを再生
+              new Audio('static/start.mp3').play();
+            </script>
+            """,
+            height=0,
+        )
+        nick = st.text_input("ニックネームを入力", max_chars=12)
+        if st.button("▶ 決定"):
+            if nick.strip() == "":
+                st.error("名前を入力してください。")
+            else:
+                st.session_state.nickname = nick.strip()
+        st.stop()
 
     # スタート前画面
     st.title(f"{st.session_state.nickname} さんの平方根クイズ")
@@ -111,8 +110,8 @@ if st.session_state.nickname == "":
 if st.session_state.start_time is None:
     st.session_state.start_time = time.time()
 elapsed = int(time.time() - st.session_state.start_time)
-remaining = max(0, 11 - elapsed)
-m, s = divmod(remaining, 11)
+remaining = max(0, 60 - elapsed)
+m, s = divmod(remaining, 60)
 st.markdown(f"## ⏱️ {st.session_state.nickname} さんの1分タイムアタック！")
 st.markdown(
     f"<div style='background:#f0f2f6;padding:8px;border-radius:8px;'>残り時間：<b>{m}:{s:02d}</b> ｜ スコア：<b>{st.session_state.score}</b>点 ｜ 挑戦：<b>{st.session_state.total}</b>問</div>",
