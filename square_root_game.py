@@ -147,30 +147,32 @@ if not st.session_state.answered:
             st.session_state.is_correct = False
             play_sound(WRONG_URL)
 
-# === 結果表示用プレースホルダを先に作成 ===
-result_ph = st.empty()
+# ------------------------------
+# 1️⃣ 先に結果プレースホルダを用意
+result_box = st.empty()
 
-# === 結果表示フェーズ ===
+# ------------------------------
+# 2️⃣ 結果描画
 if st.session_state.answered:
-    with result_ph.container():
-        if st.session_state.is_correct:
-            st.success("🎉 正解！ +1点")
-        else:
-            st.error(f"😡 不正解！ 正解は {correct} でした。−1点")
+    with result_box.container():
+        msg = "🎉 正解！ +1点" if st.session_state.is_correct else f"😡 不正解！ 正解は {correct}"
+        st.write(msg)
 
-        # === 次の問題へ ===
-        if st.button("次の問題へ"):
-            # 1⃣ 直ちに結果を非表示に
-            result_ph.empty()          # ← ここがポイント
-            # 2⃣ 状態をリセット
+        # 3️⃣ 「次の問題へ」ボタン (callback)
+        def next_q():
+            # 3-1 即 HTML を消す
+            result_box.empty()
+            # 3-2 状態リセット
             st.session_state.current_problem = make_problem()
             st.session_state.answered = False
             st.session_state.is_correct = None
             st.session_state.user_choice = ""
-            # 3⃣ 即 rerun
-            try:
-                st.rerun()             # Streamlit 1.30+
-            except AttributeError:
-                st.experimental_rerun()
+            # 3-3 即 rerun
+            st.rerun()
+
+        st.button("次の問題へ", on_click=next_q, key="next_btn")
+
+    # 4️⃣ 以下のコードは描画されない
     st.stop()
+
 
