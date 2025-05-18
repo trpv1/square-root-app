@@ -3,23 +3,16 @@ import random, math, time
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# Google Sheets 認証
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+# === Google Sheets API 連携 ===
+scope = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/drive",
+]
 creds = ServiceAccountCredentials.from_json_keyfile_dict(
     st.secrets["gcp_service_account"], scope
 )
 client = gspread.authorize(creds)
-
-# 🔽 接続テスト
-st.write("接続テスト中...")
-try:
-    sheet = client.open("ScoreBoard").sheet1
-    st.success("✅ Google Sheets に接続できました！")
-except Exception as e:
-    st.error(f"❌ 接続失敗: {e}")
-
-# ここから先に通常のアプリのコードを続けてください...
-
+sheet = client.open("ScoreBoard").sheet1  # あなたのスプレッドシート名に変更！
 
 # === スコア保存＆上位3件取得 ===
 def save_score(nickname, score):
@@ -60,9 +53,9 @@ def generate_problem():
                 if inner == 1:
                     correct = str(outer)
                 elif outer == 1:
-                    correct = f"\u221a{inner}"
+                    correct = f"√{inner}"
                 else:
-                    correct = f"{outer}\u221a{inner}"
+                    correct = f"{outer}√{inner}"
                 choices = generate_choices(correct)
                 random.shuffle(choices)
                 return a, correct, choices
@@ -75,38 +68,38 @@ def generate_choices(correct):
         if inner == 1:
             fake = str(outer)
         elif outer == 1:
-            fake = f"\u221a{inner}"
+            fake = f"√{inner}"
         else:
-            fake = f"{outer}\u221a{inner}"
+            fake = f"{outer}√{inner}"
         s.add(fake)
     return list(s)
 
 # === ニックネーム＆スタート画面 ===
 if st.session_state.nickname == "" or not st.session_state.started:
     if st.session_state.nickname == "":
-        st.title("\ud83d\udcc0 平方根 1分クイズ")
+        st.title("[sqrt] 平方根 1分クイズ")
         nick = st.text_input("ニックネームを入力", max_chars=12)
-        if st.button("\u25b6 決定"):
+        if st.button("▶ 決定"):
             if nick.strip() == "":
                 st.error("名前を入力してください。")
             else:
                 st.session_state.nickname = nick.strip()
         st.stop()
 
-    st.title(f"\ud83d\udcc0 {st.session_state.nickname} さんの平方根クイズ")
+    st.title(f"[sqrt] {st.session_state.nickname} さんの平方根クイズ")
     st.markdown("""
     **ルール：**
     - 制限時間 **1分**
     - 正解で **+1点**
     - 不正解で **−1点**
     """)
-    if st.button("\u25b6 スタート！"):
+    if st.button("▶ スタート！"):
         st.session_state.started = True
         st.session_state.start_time = time.time()
         st.session_state.current_problem = generate_problem()
     st.stop()
 
-# === タイマー ===
+# === タイマー表示 ===
 if st.session_state.start_time is None:
     st.session_state.start_time = time.time()
 elapsed = int(time.time() - st.session_state.start_time)
@@ -114,31 +107,31 @@ remaining = max(0, 60 - elapsed)
 m, s = divmod(remaining, 60)
 
 st.markdown(f"""
-## \u23f1\ufe0f {st.session_state.nickname} さんのタイムアタック！
+## [timer] {st.session_state.nickname} さんの1分タイムアタック
 <div style='background:#f0f2f6;padding:8px;border-radius:8px;'>
-⏳ 残り時間：<b>{m}:{s:02d}</b>　｜　🏆 スコア：<b>{st.session_state.score}</b> 点　｜　🔢 挑戦：<b>{st.session_state.total}</b> 問
+残り時間：<b>{m}:{s:02d}</b> ｜ スコア：<b>{st.session_state.score}</b> 点 ｜ 挑戦：<b>{st.session_state.total}</b> 問
 </div>
 """, unsafe_allow_html=True)
 
-# === タイムアップ処理 ===
+# === 時間切れ処理 ===
 if remaining == 0:
     st.markdown("---")
-    st.header("\ud83d\udd0e タイムアップ！")
+    st.header("[time up] タイムアップ！")
     st.subheader(f"{st.session_state.nickname} さんの最終スコア：{st.session_state.score}点（{st.session_state.total}問）")
     save_score(st.session_state.nickname, st.session_state.score)
     top3 = load_scores()
-    st.markdown("### \ud83c\udfc6 歴代ランキング（上位3名）")
+    st.markdown("### ランキング（上位3名）")
     for idx, entry in enumerate(top3, start=1):
         st.write(f"{idx}. {entry['name']} — {entry['score']}点")
-    if st.button("\ud83d\udd01 もう一度挑戦"):
+    if st.button("もう一度挑戦"):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.stop()
     st.stop()
 
-# === 現在の問題 ===
+# === 問題表示 ===
 a, correct, choices = st.session_state.current_problem
-st.markdown(f"### \u221a{a} を簡約すると？")
+st.markdown(f"### √{a} を簡約すると？")
 
 # === 回答フェーズ ===
 if not st.session_state.answered:
@@ -158,9 +151,9 @@ if not st.session_state.answered:
 if st.session_state.answered:
     st.markdown("---")
     if st.session_state.is_correct:
-        st.success("\ud83d\udfe2 正解！ +1点")
+        st.success("正解！ +1点")
     else:
-        st.error(f"\ud83d\udd34 不正解！ 正解は {correct} でした。−1点")
+        st.error(f"不正解！ 正解は {correct} でした。−1点")
 
     if st.button("次の問題へ"):
         st.session_state.current_problem = generate_problem()
