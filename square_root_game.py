@@ -4,12 +4,15 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 # === Google Sheets 連携 ===
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+scope = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/drive",
+]
 creds = ServiceAccountCredentials.from_json_keyfile_dict(
     st.secrets["gcp_service_account"], scope
 )
 client = gspread.authorize(creds)
-sheet = client.open("ScoreBoard").sheet1  # ← スプレッドシート名を合わせる
+sheet = client.open("ScoreBoard").sheet1
 
 # === 効果音 URL ===
 NAME_URL    = "https://github.com/trpv1/square-root-app/raw/main/static/name.mp3"
@@ -19,10 +22,10 @@ WRONG_URL   = "https://github.com/trpv1/square-root-app/raw/main/static/wrong.mp
 RESULT1_URL = "https://github.com/trpv1/square-root-app/raw/main/static/result_1.mp3"
 RESULT2_URL = "https://github.com/trpv1/square-root-app/raw/main/static/result_2.mp3"
 
-# === 効果音再生ヘルパ ===
+# === 効果音ヘルパ ===
 def play_sound(url: str):
     st.markdown(
-        f"<audio autoplay='true' style='display:none'><source src='{url}' type='audio/mpeg'></audio>",
+        f"<audio autoplay style='display:none'><source src='{url}' type='audio/mpeg'></audio>",
         unsafe_allow_html=True,
     )
 
@@ -43,13 +46,12 @@ def init_state():
     )
     for k, v in defaults.items():
         st.session_state.setdefault(k, v)
-
 init_state()
 
 # === 問題生成 ===
 def make_problem():
     while True:
-        a = random.randint(2, 130)
+        a = random.randint(2, 200)
         for i in range(int(math.sqrt(a)), 0, -1):
             if a % (i * i) == 0:
                 outer, inner = i, a // (i * i)
@@ -62,7 +64,7 @@ def make_problem():
                     choices.add(fake)
                 return a, correct, random.sample(list(choices), k=4)
 
-# === スコア保存/取得 ===
+# === 保存/取得 ===
 def save_score(name, score):
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     records = sheet.get_all_records()
@@ -70,16 +72,15 @@ def save_score(name, score):
         if records[idx]["name"] == name:
             sheet.delete_rows(idx + 2)
     sheet.append_row([name, score, timestamp])
-
 def top3():
     rec = sheet.get_all_records()
     return sorted(rec, key=lambda x: x["score"], reverse=True)[:3]
 
 # === ニックネーム入力 ===
+if not st.session_state.played_name:
+    play_sound(NAME_URL)
+    st.session_state.played_name = True
 if st.session_state.nickname == "":
-    if not st.session_state.played_name:
-        play_sound(NAME_URL)
-        st.session_state.played_name = True
     st.title("平方根 1分クイズ")
     nick = st.text_input("ニックネームを入力してください", max_chars=12)
     if st.button("決定") and nick.strip():
@@ -93,35 +94,34 @@ if not st.session_state.started:
     if st.button("スタート！"):
         play_sound(START_URL)
         st.session_state.started = True
-        st.session_state.star10 - int(time.time() - st.session_state.start_time))
-mm, ss = divmod(remaining, 10)
+        st.session_state.start_time = time.time()
+        st.session_state.current_problem = make_problem()
+    st.stop()
+
+# === タイマー ===
+remaining = max(0, 60 - int(time.time() - st.session_state.start_time))
+mm, ss = divmod(remaining, 60)
 st.markdown(f"## ⏱️ {st.session_state.nickname} さんのタイムアタック！")
 st.info(f"残り {mm}:{ss:02d} ｜ スコア {st.session_state.score} ｜ 挑戦 {st.session_state.total}")
 
-# === タイムアップ & ランキング表示 ===
+# === タイムアップ & ランキング ===
 if remaining == 0:
     st.warning("⏰ タイムアップ！")
     st.write(f"最終スコア: {st.session_state.score}点 ({st.session_state.total}問)")
-
-    # スコア保存と効果音 / アニメーション
     if not st.session_state.saved:
         save_score(st.session_state.nickname, st.session_state.score)
         st.session_state.saved = True
         ranking = top3()
         names = [r['name'] for r in ranking]
-        # 効果音
         if st.session_state.nickname in names:
             play_sound(RESULT1_URL)
         else:
             play_sound(RESULT2_URL)
-        # 派手な演出
         st.balloons()
-
     st.write("### 🏆 歴代ランキング（上位3名）")
     for i, r in enumerate(top3(), 1):
         st.write(f"{i}. {r['name']} — {r['score']}点")
-
-    if st.button("🔁 もう一度挑戦"):
+    if st.button("もう一度挑戦"):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
     st.stop()
@@ -130,7 +130,7 @@ if remaining == 0:
 a, correct, choices = st.session_state.current_problem
 st.subheader(f"√{a} を簡約すると？")
 
-# === 回答 ===
+# === 回答フェーズ ===
 if not st.session_state.answered:
     user_choice = st.radio("選択肢を選んでください", choices)
     if st.button("解答する"):
@@ -146,31 +146,20 @@ if not st.session_state.answered:
             st.session_state.is_correct = False
             play_sound(WRONG_URL)
 
-# ------------------------------
-# 1️⃣ 先に結果プレースホルダを用意
+# === 結果表示 with placeholder ===
 result_box = st.empty()
-
-# ------------------------------
-# 2️⃣ 結果描画
 if st.session_state.answered:
     with result_box.container():
-        msg = "🎉 正解！ +1点" if st.session_state.is_correct else f"😡 不正解！ 正解は {correct}"
-        st.write(msg)
-
-        # 3️⃣ 「次の問題へ」ボタン (callback)
+        if st.session_state.is_correct:
+            st.success("🎉 正解！ +1点")
+        else:
+            st.error(f"😡 不正解！ 正解は {correct} でした —1点")
         def next_q():
-            # 3-1 即 HTML を消す
             result_box.empty()
-            # 3-2 状態リセット
             st.session_state.current_problem = make_problem()
             st.session_state.answered = False
             st.session_state.is_correct = None
             st.session_state.user_choice = ""
-            # 3-3 即 rerun
-            st.rerun()
-
-        st.button("次の問題へ", on_click=next_q, key="next_btn")
-
-    # 4️⃣ 以下のコードは描画されない
+            st.experimental_rerun()
+        st.button("次の問題へ", on_click=next_q)
     st.stop()
-
