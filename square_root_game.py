@@ -141,16 +141,31 @@ if not st.session_state.answered:
             st.session_state.is_correct = False
             play_sound(WRONG_URL)
 
-# --------------------------- 結果表示 ---------------------------
-if st.session_state.answered:
-    if st.session_state.is_correct:
-        st.success("🎉 正解！ +1点")
-    else:
-        st.error(f"😡 不正解！ 正解は {correct} でした —1点")
+# ------------------------------
+# 1️⃣ 先に結果プレースホルダを用意
+result_box = st.empty()
 
-    if st.button("次の問題へ"):
-        st.session_state.current_problem = make_problem()
-        st.session_state.answered = False
-        st.session_state.is_correct = None
-        st.session_state.user_choice = ""
+# ------------------------------
+# 2️⃣ 結果描画
+if st.session_state.answered:
+    with result_box.container():
+        msg = "🎉 正解！ +1点" if st.session_state.is_correct else f"😡 不正解！ 正解は {correct}"
+        st.write(msg)
+
+        # 3️⃣ 「次の問題へ」ボタン (callback)
+        def next_q():
+            # 3-1 即 HTML を消す
+            result_box.empty()
+            # 3-2 状態リセット
+            st.session_state.current_problem = make_problem()
+            st.session_state.answered = False
+            st.session_state.is_correct = None
+            st.session_state.user_choice = ""
+            # 3-3 即 rerun
+            st.rerun()
+
+        st.button("次の問題へ", on_click=next_q, key="next_btn")
+
+    # 4️⃣ 以下のコードは描画されない
     st.stop()
+
