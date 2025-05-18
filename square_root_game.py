@@ -14,26 +14,24 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(
 client = gspread.authorize(creds)
 sheet = client.open("ScoreBoard").sheet1  # スプレッドシート名を合わせる
 
-# === 効果音ヘルパ ===
+# === 効果音 URL ===
 NAME_URL   = "https://github.com/trpv1/square-root-app/raw/main/static/name.mp3"
 START_URL  = "https://github.com/trpv1/square-root-app/raw/main/static/start.mp3"
 CORRECT_URL = "https://github.com/trpv1/square-root-app/raw/main/static/correct.mp3"
 WRONG_URL   = "https://github.com/trpv1/square-root-app/raw/main/static/wrong.mp3"
 
+# === 効果音再生ヘルパ ===
+
 def play_sound(url: str):
-    """autoplay 音声プレイヤーを埋め込む"""
     st.markdown(
-        f"""
-        <audio autoplay="true" style="display:none">
-            <source src="{url}" type="audio/mpeg">
-        </audio>
-        """,
+        f"<audio autoplay='true' style='display:none'><source src='{url}' type='audio/mpeg'></audio>",
         unsafe_allow_html=True,
     )
 
 # === セッション初期化 ===
+
 def init_state():
-    default = dict(
+    defaults = dict(
         nickname="",
         started=False,
         start_time=None,
@@ -44,8 +42,9 @@ def init_state():
         is_correct=None,
         user_choice="",
         saved=False,
+        played_name=False,  # NAME_URL 再生済み
     )
-    for k, v in default.items():
+    for k, v in defaults.items():
         st.session_state.setdefault(k, v)
 
 init_state()
@@ -58,12 +57,11 @@ def make_problem():
         for i in range(int(math.sqrt(a)), 0, -1):
             if a % (i * i) == 0:
                 outer, inner = i, a // (i * i)
-                if inner == 1:
-                    correct = str(outer)
-                elif outer == 1:
-                    correct = f"√{inner}"
-                else:
-                    correct = f"{outer}√{inner}"
+                correct = (
+                    str(outer)
+                    if inner == 1
+                    else (f"√{inner}" if outer == 1 else f"{outer}√{inner}")
+                )
                 choices = {correct}
                 while len(choices) < 4:
                     o = random.randint(1, 9)
@@ -77,10 +75,10 @@ def make_problem():
 def save_score(name, score):
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     records = sheet.get_all_records()
-    # 同名を削除
+    # 既存同名行を削除
     for idx in reversed(range(len(records))):
         if records[idx]["name"] == name:
-            sheet.delete_row(idx + 2)
+            sheet.delete_rows(idx + 2)  # gspread v6
     sheet.append_row([name, score, timestamp])
 
 def top3():
@@ -89,33 +87,30 @@ def top3():
 
 # === ニックネーム入力 ===
 if st.session_state.nickname == "":
-    play_sound(NAME_URL)
+    if not st.session_state.played_name:
+        play_sound(NAME_URL)
+        st.session_state.played_name = True
     st.title("平方根 1分クイズ")
     nick = st.text_input("ニックネームを入力してください", max_chars=12)
-    if st.button("▶ 決定"):
-        if nick.strip():
-            st.session_state.nickname = nick.strip()
-        else:
-            st.error("名前を入力してください。")
+    if st.button("▶ 決定") and nick.strip():
+        st.session_state.nickname = nick.strip()
     st.stop()
 
 # === スタート画面 ===
 if not st.session_state.started:
     st.title(f"{st.session_state.nickname} さんの平方根クイズ")
-    st.write("**ルール**: 制限時間1分、正解+1点、不正解-1点、4択で挑戦！")
+    st.write("**ルール**: 制限時間1分、正解+1点、不正解-1点、4択！")
     if st.button("▶ スタート！"):
-        play_sound(START_URL)  # スタート時効果音
+        play_sound(START_URL)
         st.session_state.started = True
         st.session_state.start_time = time.time()
         st.session_state.current_problem = make_problem()
     st.stop()
 
 # === タイマー & スコア ===
-if st.session_state.start_time is None:
-    st.session_state.start_time = time.time()
 remaining = max(0, 60 - int(time.time() - st.session_state.start_time))
 mm, ss = divmod(remaining, 60)
-st.markdown(f"## ⏱️ {st.session_state.nickname} さんの1分タイムアタック！")
+st.markdown(f"## ⏱️ {st.session_state.nickname} さんのタイムアタック！")
 st.info(f"残り {mm}:{ss:02d} ｜ スコア {st.session_state.score} ｜ 挑戦 {st.session_state.total}")
 
 # === タイムアップ ===
@@ -147,11 +142,11 @@ if not st.session_state.answered:
         if user_choice == correct:
             st.session_state.score += 1
             st.session_state.is_correct = True
-            play_sound(CORRECT_URL)  # 正解音
+            play_sound(CORRECT_URL)
         else:
             st.session_state.score -= 1
             st.session_state.is_correct = False
-            play_sound(WRONG_URL)    # 不正解音
+            play_sound(WRONG_URL)
 
 # === 結果表示 ===
 if st.session_state.answered:
