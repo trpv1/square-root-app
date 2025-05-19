@@ -100,24 +100,7 @@ if remaining == 0:
         ranking = top3()
         names = [r['name'] for r in ranking]
         play_sound(RESULT1_URL if st.session_state.nickname in names else RESULT2_URL)
-        st.markdown("""
-    <style>
-    .curtain {
-        position: fixed;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(to right, #800000 50%, #800000 50%);
-        z-index: 9999;
-        animation: openCurtain 3s forwards;
-    }
-
-    @keyframes openCurtain {
-        0% { clip-path: inset(0 0 0 0); }
-        100% { clip-path: inset(0 50% 0 50%); }
-    }
-    </style>
-    <div class="curtain"></div>
-""", unsafe_allow_html=True)
+        st.balloons()
     st.write("### 🏆 歴代ランキング（上位3名）")
     for i, r in enumerate(top3(), 1):
         st.write(f"{i}. {r['name']} — {r['score']}点")
