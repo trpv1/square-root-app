@@ -66,20 +66,12 @@ def top3():
 if not st.session_state.played_name:
     play_sound(NAME_URL)
     st.session_state.played_name = True
-
 if st.session_state.nickname == "":
-    st.title("平方根 1分クイズ (Square Root 1-Minute Quiz)")  # タイトルに英語併記
-
-    nick = st.text_input(
-        "ニックネームを入力してください（Please enter your nickname）", 
-        max_chars=12
-    )
-
-    if st.button("決定 / Confirm") and nick.strip():
+    st.title("平方根 1分クイズ")
+    nick = st.text_input("ニックネームを入力してください", max_chars=12)
+    if st.button("決定") and nick.strip():
         st.session_state.nickname = nick.strip()
-
     st.stop()
-
 
 # === スタート前画面 ===
 if not st.session_state.started:
