@@ -65,7 +65,7 @@ def top3():
 # --- クラス選択 ---
 if "class_selected" not in st.session_state:
     st.title("ユーザーネームを選択してください")
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3, c4 = st.columns(4)
     with c1:
         if st.button("3R1"):
             st.session_state.class_selected = "3R1"
@@ -75,6 +75,9 @@ if "class_selected" not in st.session_state:
     with c3:
         if st.button("3R3"):
             st.session_state.class_selected = "3R3"
+    with c3:
+        if st.button("3R3"):
+            st.session_state.class_selected = "講師"
     st.stop()
 
 # --- パスワード認証 ---
