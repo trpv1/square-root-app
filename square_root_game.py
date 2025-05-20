@@ -121,23 +121,31 @@ if remaining == 0:
     st.warning("⏰ タイムアップ！")
     st.write(f"最終スコア: {st.session_state.score}点 ({st.session_state.total}問)")
     if not st.session_state.saved:
+        # 1️⃣ フルネームを生成して保存
         full_name = f"{st.session_state.class_selected}_{st.session_state.nickname}"
         save_score(full_name, st.session_state.score)
 
         st.session_state.saved = True
+        # 2️⃣ ランキング上位かどうか判定
         ranking = top3()
-        names = [r['name'] for r in ranking]
-        play_sound(RESULT1_URL if st.session_state.nickname in names else RESULT2_URL)
+        names = [r["name"] for r in ranking]
+        if full_name in names:
+            play_sound(RESULT1_URL)
+        else:
+            play_sound(RESULT2_URL)
         st.balloons()
     st.write("### 🏆 歴代ランキング（上位3名）")
     for i, r in enumerate(top3(), 1):
         st.write(f"{i}. {r['name']} — {r['score']}点")
-    if st.button("🔁 もう一度挑戦"):
-        for k in list(st.session_state.keys()): del st.session_state[k]
+    def restart_all():
+        # セッションを完全クリア
+        for k in list(st.session_state.keys()):
+            del st.session_state[k]
+        # 再デプロイ相当で最初の画面からやり直し
+        st.experimental_rerun()
+
+    st.button("🔁 もう一度挑戦", on_click=restart_all)
     st.stop()
-    # 認証を最初からやり直すため
-st.session_state.pop("class_selected", None)
-st.session_state.pop("password_ok", None)
 
 
 # === 問題表示 ===
