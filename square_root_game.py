@@ -81,7 +81,7 @@ if "class_selected" not in st.session_state:
 if not st.session_state.get("password_ok", False):
     pw = st.text_input("パスワードを入力してください", type="password")
     if st.button("確認"):
-        if pw == "受験合格":
+        if pw == "machida":
             st.session_state.password_ok = True
         else:
             st.error("パスワードが違います")
