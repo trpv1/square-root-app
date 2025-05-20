@@ -95,29 +95,33 @@ def top3():
 # --- クラス選択 ---
 if "class_selected" not in st.session_state:
     st.title("ユーザーネームを選択してください")
+
+    def select_class(cls):
+        st.session_state.class_selected = cls
+
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        if st.button("3R1"):
-            st.session_state.class_selected = "3R1"
+        st.button("3R1", on_click=select_class, args=("3R1",))
     with c2:
-        if st.button("3R2"):
-            st.session_state.class_selected = "3R2"
+        st.button("3R2", on_click=select_class, args=("3R2",))
     with c3:
-        if st.button("3R3"):
-            st.session_state.class_selected = "3R3"
+        st.button("3R3", on_click=select_class, args=("3R3",))
     with c4:
-        if st.button("講師"):
-            st.session_state.class_selected = "講師"
+        st.button("講師", on_click=select_class, args=("講師",))
+
     st.stop()
 
 # --- パスワード認証 ---
 if not st.session_state.get("password_ok", False):
-    pw = st.text_input("Password：作成者の担当クラスは？", type="password")
-    if st.button("確認"):
-        if pw == "3R3":
+    st.text_input("Password：作成者の担当クラスは？", type="password", key="pw_input")
+
+    def check_password():
+        if st.session_state.pw_input == "3R3":
             st.session_state.password_ok = True
         else:
             st.error("パスワードが違います")
+
+    st.button("確認", on_click=check_password)
     st.stop()
 
 # --- 注意書き ---
@@ -130,9 +134,13 @@ if st.session_state.get("password_ok", False) and not st.session_state.get("agre
 - エラーメッセージが出ることがありますが、**ページを更新**すると改善される場合があります。  
 - 上記ルールを遵守いただけない場合は、利用を中止いたします。  
     """)
-    if st.button("■ 同意して次へ"):
+
+    def agree_and_continue():
         st.session_state.agreed = True
+
+    st.button("■ 同意して次へ", on_click=agree_and_continue)
     st.stop()
+
 
 # === ニックネーム入力 ===
 # ① nick_input をセッションに先に初期化
