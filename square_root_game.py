@@ -75,16 +75,16 @@ if "class_selected" not in st.session_state:
     with c3:
         if st.button("3R3"):
             st.session_state.class_selected = "3R3"
-    with c3:
-        if st.button("3R3"):
+    with c4:
+        if st.button("講師"):
             st.session_state.class_selected = "講師"
     st.stop()
 
 # --- パスワード認証 ---
 if not st.session_state.get("password_ok", False):
-    pw = st.text_input("パスワードを入力してください", type="password")
+    pw = st.text_input("Password：作成者の担当クラスは？", type="password")
     if st.button("確認"):
-        if pw == "machida":
+        if pw == "3R3":
             st.session_state.password_ok = True
         else:
             st.error("パスワードが違います")
