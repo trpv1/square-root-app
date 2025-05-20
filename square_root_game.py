@@ -90,6 +90,19 @@ if not st.session_state.get("password_ok", False):
             st.error("パスワードが違います")
     st.stop()
 
+# --- 注意書き ---
+if st.session_state.get("password_ok", False) and not st.session_state.get("agreed", False):
+    st.markdown("## ⚠️ 注意事項", unsafe_allow_html=True)
+    st.write("""
+- **個人情報**（本名・住所・電話番号など）の入力は禁止です。  
+- **1日30分以上**の継続使用はお控えください（他の勉強時間を優先しましょう）。  
+- 本アプリは**初回作成**のため、クオリティにばらつきがあります。  
+- エラーメッセージが出ることがありますが、**ページをリロード**すると改善される場合があります。  
+- 上記ルールを遵守いただけない場合は、利用を中止いたします。  
+    """)
+    if st.button("■ 同意して次へ"):
+        st.session_state.agreed = True
+    st.stop()
 
 # === ニックネーム入力 ===
 if not st.session_state.played_name:
