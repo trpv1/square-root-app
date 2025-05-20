@@ -157,8 +157,8 @@ if remaining == 0:
         # セッションを完全クリア
         for k in list(st.session_state.keys()):
             del st.session_state[k]
-        # 再デプロイ相当で最初の画面からやり直し
-        st.experimental_rerun()
+        # スクリプトを最初から再実行
+        st.rerun()
 
     st.button("🔁 もう一度挑戦", on_click=restart_all)
     st.stop()
