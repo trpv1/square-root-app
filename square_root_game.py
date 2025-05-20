@@ -35,14 +35,44 @@ def init_state():
         st.session_state.setdefault(k, v)
 init_state()
 
-# === 問題生成 ===
+# === 問題生成（重み付き＋10択＋「√そのまま」必須） ===
 def make_problem():
-    a = random.randint(2, 100)
+    # ① 出現確率を上げたい a 値
+    fav = {12, 18, 20, 24, 28, 32, 40, 48, 50, 54, 56, 58}
+
+    # ② 2～100 を重み付きでサンプリング
+    population = list(range(2, 101))
+    weights    = [10 if n in fav else 1 for n in population]
+    a = random.choices(population, weights)[0]
+
+    # ③ √a を簡約
     for i in range(int(math.sqrt(a)), 0, -1):
         if a % (i * i) == 0:
             outer, inner = i, a // (i * i)
-            correct = str(outer) if inner == 1 else (f"√{inner}" if outer == 1 else f"{outer}√{inner}")
-            return a, correct, generate_choices(correct)
+            correct = (
+                str(outer)
+                if inner == 1
+                else (f"√{inner}" if outer == 1 else f"{outer}√{inner}")
+            )
+
+            # ④ 「√そのまま」も必ず選択肢に入れる
+            unsimpl = f"√{a}"
+
+            # ⑤ 10択の生成（正解＋生ルート＋ニセ解答）
+            choices_set = {correct, unsimpl}
+            while len(choices_set) < 10:
+                o   = random.randint(1, 9)
+                inn = random.randint(1, 50)
+                fake = (
+                    str(o)
+                    if inn == 1
+                    else (f"√{inn}" if o == 1 else f"{o}√{inn}")
+                )
+                choices_set.add(fake)
+
+            # ⑥ ランダムに並び替えて返却
+            choices = random.sample(list(choices_set), k=10)
+            return a, correct, choices
 
 # 10択の選択肢生成
 def generate_choices(correct):
