@@ -141,8 +141,14 @@ if not st.session_state.played_name:
 if st.session_state.nickname == "":
     st.title("平方根 1分クイズ")
     nick = st.text_input("ニックネームを入力してください", max_chars=12)
-    if st.button("決定") and nick.strip():
-        st.session_state.nickname = nick.strip()
+
+    
+    # 決定ボタンは on_click でセッションに保存
+    def set_nickname():
+        name = st.session_state.nick_input.strip()
+        if name:
+            st.session_state.nickname = name
+    st.button("決定", on_click=set_nickname)
     st.stop()
 
 # === スタート前画面 ===
