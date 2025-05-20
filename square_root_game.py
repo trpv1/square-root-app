@@ -37,7 +37,7 @@ init_state()
 
 # === 問題生成 ===
 def make_problem():
-    a = random.randint(2, 200)
+    a = random.randint(2, 100)
     for i in range(int(math.sqrt(a)), 0, -1):
         if a % (i * i) == 0:
             outer, inner = i, a // (i * i)
