@@ -135,21 +135,29 @@ if st.session_state.get("password_ok", False) and not st.session_state.get("agre
     st.stop()
 
 # === ニックネーム入力 ===
+# ① nick_input キーがない場合は初期化
+if "nick_input" not in st.session_state:
+    st.session_state.nick_input = ""
+
+# ② 初回のみ NAME_URL を再生
 if not st.session_state.played_name:
     play_sound(NAME_URL)
     st.session_state.played_name = True
+
+# ③ ニックネーム未設定なら入力画面
 if st.session_state.nickname == "":
     st.title("平方根 1分クイズ")
-    nick = st.text_input("ニックネームを入力してください", max_chars=12)
-
-    
-    # 決定ボタンは on_click でセッションに保存
+    # テキスト入力（キー付き）
+    st.text_input("ニックネームを入力してください", key="nick_input", max_chars=12)
+    # 決定ボタンは on_click で入力内容を session_state に反映
     def set_nickname():
         name = st.session_state.nick_input.strip()
         if name:
             st.session_state.nickname = name
+
     st.button("決定", on_click=set_nickname)
     st.stop()
+
 
 # === スタート前画面 ===
 if not st.session_state.started:
