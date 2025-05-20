@@ -164,12 +164,18 @@ if st.session_state.nickname == "":
 if not st.session_state.started:
     st.title(f"{st.session_state.nickname} さんの平方根クイズ")
     st.write("**ルール**: 制限時間1分、正解+1点、不正解-1点、10択で挑戦！")
-    if st.button("スタート！"):
+
+    # on_click 用コールバックを定義
+    def start_quiz():
         play_sound(START_URL)
         st.session_state.started = True
         st.session_state.start_time = time.time()
         st.session_state.current_problem = make_problem()
+
+    # ボタン押下時に start_quiz() が呼ばれる
+    st.button("スタート！", on_click=start_quiz)
     st.stop()
+
 
 # === タイマー表示 ===
 remaining = max(0, 60 - int(time.time() - st.session_state.start_time))
