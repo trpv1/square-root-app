@@ -62,6 +62,32 @@ def top3():
     rec = sheet.get_all_records()
     return sorted(rec, key=lambda x: x["score"], reverse=True)[:3]
 
+# --- クラス選択 ---
+if "class_selected" not in st.session_state:
+    st.title("ユーザーネームを選択してください")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        if st.button("3R1"):
+            st.session_state.class_selected = "3R1"
+    with c2:
+        if st.button("3R2"):
+            st.session_state.class_selected = "3R2"
+    with c3:
+        if st.button("3R3"):
+            st.session_state.class_selected = "3R3"
+    st.stop()
+
+# --- パスワード認証 ---
+if not st.session_state.get("password_ok", False):
+    pw = st.text_input("パスワードを入力してください", type="password")
+    if st.button("確認"):
+        if pw == "受験合格":
+            st.session_state.password_ok = True
+        else:
+            st.error("パスワードが違います")
+    st.stop()
+
+
 # === ニックネーム入力 ===
 if not st.session_state.played_name:
     play_sound(NAME_URL)
@@ -95,7 +121,9 @@ if remaining == 0:
     st.warning("⏰ タイムアップ！")
     st.write(f"最終スコア: {st.session_state.score}点 ({st.session_state.total}問)")
     if not st.session_state.saved:
-        save_score(st.session_state.nickname, st.session_state.score)
+        full_name = f"{st.session_state.class_selected}_{st.session_state.nickname}"
+        save_score(full_name, st.session_state.score)
+
         st.session_state.saved = True
         ranking = top3()
         names = [r['name'] for r in ranking]
@@ -107,6 +135,10 @@ if remaining == 0:
     if st.button("🔁 もう一度挑戦"):
         for k in list(st.session_state.keys()): del st.session_state[k]
     st.stop()
+    # 認証を最初からやり直すため
+st.session_state.pop("class_selected", None)
+st.session_state.pop("password_ok", None)
+
 
 # === 問題表示 ===
 a, correct, choices = st.session_state.current_problem
